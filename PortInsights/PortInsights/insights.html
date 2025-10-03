@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PortInsights — Insights</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Fonts + Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Three.js + Vanta -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.net.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0a0f1a;
+      --panel:#0f1524;
+      --muted:#94a3b8;
+      --brand:#84cc16;
+      --brand-2:#22d3ee;
+      --white:#e5e7eb;
+      --shadow:0 10px 30px rgba(0,0,0,.45);
+      --radius:16px;
+    }
+    body {
+      margin:0; font-family:Inter,sans-serif;
+      background:var(--bg); color:var(--white);
+      overflow-x:hidden;
+    }
+    #vanta-bg{position:fixed; inset:0; z-index:0;}
+
+    /* NAVBAR */
+    .nav{
+      position:fixed; top:0; left:0; right:0; height:64px;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 20px; z-index:50;
+      background: rgba(10,15,26,.65); backdrop-filter: blur(12px);
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .brand{display:flex; align-items:center; gap:12px; font-weight:800;}
+    .brand-badge{width:28px;height:28px;border-radius:8px;
+      background:linear-gradient(135deg,var(--brand),var(--brand-2));}
+    .nav a{color:var(--white); text-decoration:none; margin-left:22px; font-weight:600; opacity:.85;}
+    .nav a:hover{opacity:1}
+    .nav .cta{background:linear-gradient(135deg,var(--brand),var(--brand-2)); color:#0a0f1a;
+      padding:10px 14px; border-radius:10px; margin-left:18px; font-weight:800;}
+
+    /* INSIGHTS SECTION */
+    .section{position:relative; z-index:1; max-width:1200px; margin:100px auto 60px; padding:0 24px;}
+    .section h2{font-size:28px; margin-bottom:20px;}
+    .grid{display:grid; gap:22px; grid-template-columns: repeat(12, 1fr);}
+    .card{
+      grid-column: span 4; background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.06); border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:18px;
+    }
+    .card h3{margin:6px 0 10px; font-size:16px;}
+    .kpi{font-size:28px; font-weight:900; background: linear-gradient(135deg,var(--brand),var(--brand-2));
+      -webkit-background-clip:text; color:transparent;}
+    .muted{color:var(--muted); font-size:13px;}
+    .card--wide{grid-column: span 12; display:grid; grid-template-columns:1.2fr 1fr; gap:18px; align-items:center;}
+
+    @media (max-width: 960px){.card{grid-column: span 6} .card--wide{grid-template-columns:1fr}}
+    @media (max-width: 640px){.card{grid-column: span 12}}
+  </style>
+</head>
+<body>
+  <div id="vanta-bg"></div>
+
+  <!-- NAVBAR -->
+  <nav class="nav">
+    <div class="brand">
+      <div class="brand-badge"></div>
+      <div>PortInsights</div>
+    </div>
+    <div>
+      <a href="insights.html">Insights</a>
+      <a href="#">Chat History</a>
+      <a href="index.html" class="cta">Chat</a>
+    </div>
+  </nav>
+
+  <!-- INSIGHTS CONTENT -->
+  <main class="section">
+    <h2>Insights</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Arrivals Today</h3>
+        <div class="kpi">324</div>
+        <div class="muted">Vs. yesterday: <span style="color:#22d3ee">+6.4%</span></div>
+      </div>
+      <div class="card">
+        <h3>Avg. Waiting Time</h3>
+        <div class="kpi">7.8 h</div>
+        <div class="muted">Last 7d rolling average</div>
+      </div>
+      <div class="card">
+        <h3>CO₂ (Month-to-date)</h3>
+        <div class="kpi">42.1 kt</div>
+        <div class="muted">Estimated at current speeds</div>
+      </div>
+
+      <div class="card card--wide">
+        <div>
+          <h3>Monthly Arrivals by Port</h3>
+          <canvas id="chartArrivals" height="120"></canvas>
+        </div>
+        <div>
+          <h3>Congestion Heat (sample)</h3>
+          <canvas id="chartCongestion" height="120"></canvas>
+        </div>
+      </div>
+
+      <div class="card card--wide">
+        <div>
+          <h3>CO₂ by Vessel Type</h3>
+          <canvas id="chartCO2" height="120"></canvas>
+        </div>
+        <div>
+          <h3>Traffic Map (placeholder)</h3>
+          <div style="height:220px;border-radius:12px;border:1px dashed rgba(255,255,255,.15);
+                      display:grid;place-items:center;color:var(--muted)">
+            Map goes here (Mapbox/Plotly)
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Vanta background
+    VANTA.NET({
+      el: "#vanta-bg", mouseControls:true, touchControls:true, minHeight:200, minWidth:200,
+      color:0x22d3ee, backgroundColor:0x0a0f1a, points:8.0, maxDistance:18.0, spacing:16.0
+    });
+
+    // Charts demo
+    new Chart(document.getElementById('chartArrivals'), {
+      type:'line', data:{labels:['Jan','Feb','Mar','Apr','May','Jun'],
+        datasets:[{label:'Gothenburg',data:[620,690,720,760,810,830],borderColor:'#22d3ee',tension:.35},
+                  {label:'Klaipeda',data:[540,560,600,650,670,690],borderColor:'#84cc16',tension:.35}]},
+      options:{plugins:{legend:{labels:{color:'#cbd5e1'}}},scales:{x:{ticks:{color:'#94a3b8'}},y:{ticks:{color:'#94a3b8'}}}}
+    });
+    new Chart(document.getElementById('chartCongestion'), {
+      type:'bar', data:{labels:['Hel','Sto','Riga','Gdn','Kla'],datasets:[{data:[6.1,5.2,7.4,6.8,7.9],backgroundColor:['#22d3ee','#22d3ee','#84cc16','#22d3ee','#84cc16']}]},
+      options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#94a3b8'}},y:{ticks:{color:'#94a3b8'}}}}
+    });
+    new Chart(document.getElementById('chartCO2'), {
+      type:'bar', data:{labels:['Cargo','Tanker','Bulk'],datasets:[{data:[18.2,22.4,11.5],backgroundColor:['#22d3ee','#84cc16','#22d3ee']}]},
+      options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#94a3b8'}},y:{ticks:{color:'#94a3b8'}}}}
+    });
+  </script>
+</body>
+</html>

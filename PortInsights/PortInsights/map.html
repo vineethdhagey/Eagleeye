@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PortInsights — Map</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Fonts + Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+
+  <!-- Mapbox -->
+  <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
+
+  <!-- Three.js + Vanta -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.net.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0a0f1a;
+      --brand:#84cc16;
+      --brand-2:#22d3ee;
+      --white:#e5e7eb;
+      --radius:16px;
+    }
+    body {
+      margin:0; font-family:Inter,sans-serif;
+      background:var(--bg); color:var(--white);
+      overflow-x:hidden;
+    }
+    #vanta-bg{position:fixed; inset:0; z-index:0;}
+
+    /* NAVBAR */
+    .nav{
+      position:fixed; top:0; left:0; right:0; height:64px;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 20px; z-index:50;
+      background: rgba(10,15,26,.65); backdrop-filter: blur(12px);
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .brand{display:flex; align-items:center; gap:12px; font-weight:800;}
+    .brand-badge{width:28px;height:28px;border-radius:8px;
+      background:linear-gradient(135deg,var(--brand),var(--brand-2));}
+    .nav a{color:var(--white); text-decoration:none; margin-left:22px; font-weight:600; opacity:.85;}
+    .nav a:hover{opacity:1}
+    .nav .cta{background:linear-gradient(135deg,var(--brand),var(--brand-2)); color:#0a0f1a;
+      padding:10px 14px; border-radius:10px; margin-left:18px; font-weight:800;}
+
+    /* MAP CONTAINER */
+    #map {
+      width: 100%;
+      height: 85vh;
+      border-radius: var(--radius);
+      margin-top: 80px;
+      z-index: 1;
+    }
+
+    .pulse {
+      box-shadow: 0 0 0 0 rgba(34,211,238, 0.7);
+      animation: pulse 1.6s infinite;
+      border-radius: 50%;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34,211,238, 0.7); }
+      70% { box-shadow: 0 0 0 18px rgba(34,211,238, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,211,238, 0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="vanta-bg"></div>
+
+  <!-- NAVBAR -->
+  <nav class="nav">
+    <div class="brand">
+      <div class="brand-badge"></div>
+      <div>PortInsights</div>
+    </div>
+    <div>
+      <a href="insights.html">Insights</a>
+      <a href="#">Chat History</a>
+      <a href="index.html" class="cta">Chat</a>
+      <a href="map.html">Map</a>
+    </div>
+  </nav>
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <script>
+    // Background
+    VANTA.NET({
+      el: "#vanta-bg", mouseControls:true, touchControls:true,
+      minHeight:200, minWidth:200, color:0x22d3ee, backgroundColor:0x0a0f1a,
+      points:8.0, maxDistance:18.0, spacing:16.0
+    });
+
+    // Mapbox init
+    mapboxgl.accessToken = 'pk.eyJ1IjoicHJhaGFyc2giLCJhIjoiY21nMmJveTlqMDc0eDJwcXlqbGZhc3NlZyJ9.1K7hZgggaolTz5QDhQ3S0A';
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [19.5, 58.5],
+      zoom: 4.8
+    });
+
+    const PORTS = [
+      { name: "Klaipėda", lon: 21.119, lat: 55.705, country: "LT" },
+      { name: "Gdańsk", lon: 18.646, lat: 54.352, country: "PL" },
+      { name: "Gdynia", lon: 18.538, lat: 54.518, country: "PL" },
+      { name: "Riga", lon: 24.105, lat: 56.949, country: "LV" },
+      { name: "Ventspils", lon: 21.556, lat: 57.393, country: "LV" },
+      { name: "Liepāja", lon: 21.016, lat: 56.516, country: "LV" },
+      { name: "Tallinn", lon: 24.753, lat: 59.437, country: "EE" },
+      { name: "Helsinki", lon: 24.935, lat: 60.169, country: "FI" },
+      { name: "Turku", lon: 22.268, lat: 60.451, country: "FI" },
+      { name: "Stockholm", lon: 18.068, lat: 59.329, country: "SE" },
+      { name: "Nynäshamn", lon: 18.000, lat: 58.903, country: "SE" },
+      { name: "Gothenburg", lon: 11.968, lat: 57.708, country: "SE" },
+      { name: "Karlskrona", lon: 15.588, lat: 56.162, country: "SE" },
+      { name: "Kaliningrad", lon: 20.452, lat: 54.710, country: "RU" },
+      { name: "Copenhagen", lon: 12.568, lat: 55.676, country: "DK" },
+      { name: "Aarhus", lon: 10.203, lat: 56.162, country: "DK" },
+      { name: "Rostock", lon: 12.100, lat: 54.092, country: "DE" },
+      { name: "Lübeck", lon: 10.686, lat: 53.868, country: "DE" },
+      { name: "Klaipeda Oil Terminal", lon: 21.134, lat: 55.700, country: "LT" }
+    ];
+
+    const portMarkers = new Map();
+    function addPorts() {
+      PORTS.forEach(p => {
+        const el = document.createElement('div');
+        el.style.width = '12px';
+        el.style.height = '12px';
+        el.style.background = '#22d3ee';
+        el.style.border = '2px solid #0a0f1a';
+        el.style.borderRadius = '50%';
+        el.title = `${p.name} (${p.country})`;
+
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([p.lon, p.lat])
+          .setPopup(new mapboxgl.Popup().setHTML(`<strong>${p.name}</strong><br>${p.country}`))
+          .addTo(map);
+
+        portMarkers.set(p.name.toLowerCase(), { marker, el, data: p });
+      });
+    }
+
+    const FALLBACK_BOUNDARIES = {
+      "Klaipėda": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [21.100, 55.695],
+              [21.140, 55.695],
+              [21.140, 55.715],
+              [21.100, 55.715],
+              [21.100, 55.695]
+            ]]
+          }
+        }]
+      },
+      "Gdańsk": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [18.630, 54.340],
+              [18.670, 54.340],
+              [18.670, 54.360],
+              [18.630, 54.360],
+              [18.630, 54.340]
+            ]]
+          }
+        }]
+      },
+      "Riga": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [24.090, 56.940],
+              [24.120, 56.940],
+              [24.120, 56.960],
+              [24.090, 56.960],
+              [24.090, 56.940]
+            ]]
+          }
+        }]
+      },
+      "Helsinki": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [24.920, 60.160],
+              [24.950, 60.160],
+              [24.950, 60.180],
+              [24.920, 60.180],
+              [24.920, 60.160]
+            ]]
+          }
+        }]
+      },
+      "Stockholm": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [18.050, 59.320],
+              [18.090, 59.320],
+              [18.090, 59.340],
+              [18.050, 59.340],
+              [18.050, 59.320]
+            ]]
+          }
+        }]
+      },
+      "Copenhagen": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [12.550, 55.670],
+              [12.590, 55.670],
+              [12.590, 55.690],
+              [12.550, 55.690],
+              [12.550, 55.670]
+            ]]
+          }
+        }]
+      },
+      "Gdynia": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [18.520, 54.508],
+              [18.556, 54.508],
+              [18.556, 54.528],
+              [18.520, 54.528],
+              [18.520, 54.508]
+            ]]
+          }
+        }]
+      },
+      "Ventspils": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [21.540, 57.383],
+              [21.572, 57.383],
+              [21.572, 57.403],
+              [21.540, 57.403],
+              [21.540, 57.383]
+            ]]
+          }
+        }]
+      },
+      "Liepāja": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [21.000, 56.506],
+              [21.032, 56.506],
+              [21.032, 56.526],
+              [21.000, 56.526],
+              [21.000, 56.506]
+            ]]
+          }
+        }]
+      },
+      "Tallinn": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [24.740, 59.427],
+              [24.766, 59.427],
+              [24.766, 59.447],
+              [24.740, 59.447],
+              [24.740, 59.427]
+            ]]
+          }
+        }]
+      },
+      "Turku": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [22.258, 60.441],
+              [22.278, 60.441],
+              [22.278, 60.461],
+              [22.258, 60.461],
+              [22.258, 60.441]
+            ]]
+          }
+        }]
+      },
+      "Nynäshamn": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [17.990, 58.893],
+              [18.010, 58.893],
+              [18.010, 58.913],
+              [17.990, 58.913],
+              [17.990, 58.893]
+            ]]
+          }
+        }]
+      },
+      "Gothenburg": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [11.958, 57.698],
+              [11.978, 57.698],
+              [11.978, 57.718],
+              [11.958, 57.718],
+              [11.958, 57.698]
+            ]]
+          }
+        }]
+      },
+      "Karlskrona": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [15.578, 56.152],
+              [15.598, 56.152],
+              [15.598, 56.172],
+              [15.578, 56.172],
+              [15.578, 56.152]
+            ]]
+          }
+        }]
+      },
+      "Kaliningrad": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [20.442, 54.700],
+              [20.462, 54.700],
+              [20.462, 54.720],
+              [20.442, 54.720],
+              [20.442, 54.700]
+            ]]
+          }
+        }]
+      },
+      "Aarhus": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [10.193, 56.152],
+              [10.213, 56.152],
+              [10.213, 56.172],
+              [10.193, 56.172],
+              [10.193, 56.152]
+            ]]
+          }
+        }]
+      },
+      "Rostock": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [12.090, 54.082],
+              [12.110, 54.082],
+              [12.110, 54.102],
+              [12.090, 54.102],
+              [12.090, 54.082]
+            ]]
+          }
+        }]
+      },
+      "Lübeck": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [10.676, 53.858],
+              [10.696, 53.858],
+              [10.696, 53.878],
+              [10.676, 53.878],
+              [10.676, 53.858]
+            ]]
+          }
+        }]
+      },
+      "Klaipeda Oil Terminal": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "properties": {},
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [21.124, 55.690],
+              [21.144, 55.690],
+              [21.144, 55.710],
+              [21.124, 55.710],
+              [21.124, 55.690]
+            ]]
+          }
+        }]
+      }
+    };
+
+    async function showPortBoundary(portName) {
+      try {
+        const response = await fetch(`/api/port-boundary/${encodeURIComponent(portName)}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        let boundaryData = data;
+        if (!data || !data.features || data.features.length === 0) {
+          if (FALLBACK_BOUNDARIES[portName]) {
+            boundaryData = FALLBACK_BOUNDARIES[portName];
+          } else {
+            console.warn('No boundary data for port:', portName);
+            return;
+          }
+        }
+        const sourceId = `port-boundary-${portName}`;
+        const fillLayerId = `port-boundary-fill-${portName}`;
+        const outlineLayerId = `port-boundary-outline-${portName}`;
+        console.log('Loaded boundary for port:', portName, boundaryData);
+        if (map.getSource(sourceId)) {
+          map.getSource(sourceId).setData(boundaryData);
+        } else {
+          map.addSource(sourceId, { type: 'geojson', data: boundaryData });
+          map.addLayer({
+            id: fillLayerId,
+            type: 'fill',
+            source: sourceId,
+            paint: { 'fill-color': '#84cc16', 'fill-opacity': 0.25 }
+          });
+          map.addLayer({
+            id: outlineLayerId,
+            type: 'line',
+            source: sourceId,
+            paint: { 'line-color': '#84cc16', 'line-width': 3, 'line-opacity': 0.8 }
+          });
+        }
+        const bbox = turf.bbox(boundaryData);
+        map.fitBounds(bbox, { padding: 40, duration: 1200 });
+      } catch (error) {
+        console.error('Failed to load port boundary:', error);
+      }
+    }
+    function highlightPort(name){
+      const rec = portMarkers.get(String(name).toLowerCase());
+      if(!rec) { console.warn('Port not found:', name); return; }
+      // fly and open popup
+      map.flyTo({ center: [rec.data.lon, rec.data.lat], zoom: 10, speed: 0.6 });
+      rec.marker.togglePopup();
+      // pulse highlight for 3 seconds
+      rec.el.classList.add('pulse');
+      setTimeout(()=> rec.el.classList.remove('pulse'), 3000);
+      showPortBoundary(name);
+    }
+
+    async function loadBalticPolygon(){
+      const url = "https://geo.vliz.be/geoserver/MarineRegions/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=MarineRegions:World_Seas&outputFormat=application/json&CQL_FILTER=SEANAME%20=%20'Baltic%20Sea'";
+      try{
+        const res = await fetch(url);
+        const gj = await res.json();
+        if(!map.getSource('baltic-sea')){
+          map.addSource('baltic-sea', { type:'geojson', data: gj });
+          map.addLayer({
+            id:'baltic-fill',
+            type:'fill',
+            source:'baltic-sea',
+            paint:{ 'fill-color':'#22d3ee', 'fill-opacity': 0.08 }
+          });
+          map.addLayer({
+            id:'baltic-outline',
+            type:'line',
+            source:'baltic-sea',
+            paint:{ 'line-color':'#22d3ee', 'line-width': 2, 'line-opacity': 0.6 }
+          });
+        } else {
+          map.getSource('baltic-sea').setData(gj);
+        }
+        // Fit map to polygon bounds
+        const bbox = turf.bbox(gj);
+        map.fitBounds(bbox, { padding: 40, duration: 1200 });
+      }catch(e){
+        console.error('Failed to load Baltic polygon:', e);
+      }
+    }
+
+    map.on('load', () => {
+      loadBalticPolygon();
+      addPorts();
+
+      // Optional: support URL param ?port=Klaipėda to auto-highlight
+      const params = new URLSearchParams(window.location.search);
+      const portParam = params.get('port');
+      if (portParam) highlightPort(portParam);
+    });
+
+    // Port marker
+    new mapboxgl.Marker({ color: '#22d3ee' })
+      .setLngLat([21.119, 55.705])
+      .setPopup(new mapboxgl.Popup().setText("Klaipėda Port"))
+      .addTo(map);
+
+    let vesselMarkers = [];
+
+    function getColorByStatus(status) {
+      if (status === "Under way") return '#22c55e'; // green
+      if (status === "At anchor") return '#ef4444'; // red
+      return '#3b82f6'; // blue for others
+    }
+
+    async function fetchVessels() {
+      try {
+        const response = await fetch('http://localhost:5050/api/vessels/');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const vessels = await response.json();
+
+        // Remove old markers
+        vesselMarkers.forEach(marker => marker.remove());
+        vesselMarkers = [];
+
+        vessels.forEach(v => {
+          if (!v.LON || !v.LAT) return; // skip if no coordinates
+          const color = getColorByStatus(v.STATUS);
+          const marker = new mapboxgl.Marker({ color: color })
+            .setLngLat([v.LON, v.LAT])
+            .setPopup(new mapboxgl.Popup().setHTML(
+              `<strong>${v.SHIPNAME}</strong><br>Status: ${v.STATUS}<br>SOG: ${v.SOG}`
+            ))
+            .addTo(map);
+          vesselMarkers.push(marker);
+        });
+      } catch (error) {
+        console.error('Failed to fetch vessels:', error);
+      }
+    }
+
+    fetchVessels();
+    setInterval(fetchVessels, 15000);
+  </script>
+</body>
+</html>

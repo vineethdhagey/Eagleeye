@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PortInsights — Grok-style Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Fonts + Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+
+  <!-- Chart.js (Insights placeholders) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Three.js + Vanta (animated 3D-ish background) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.net.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0a0f1a;            /* deep night */
+      --panel:#0f1524;         /* card background */
+      --muted:#94a3b8;         /* slate-300 */
+      --line:#1f2937;          /* grid lines */
+      --brand:#84cc16;         /* neon lime */
+      --brand-2:#22d3ee;       /* neon cyan */
+      --white:#e5e7eb;
+      --shadow: 0 10px 30px rgba(0,0,0,.45);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
+      color:var(--white);
+      background:var(--bg);
+      overflow-x:hidden;
+    }
+
+    /* NAVBAR */
+    .nav{
+      position:fixed; inset:0 0 auto 0; height:64px;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 20px; z-index:50;
+      background: rgba(10,15,26,.65);
+      backdrop-filter: blur(12px);
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:.3px;
+    }
+    .brand-badge{
+      width:28px;height:28px;border-radius:8px;
+      background:linear-gradient(135deg,var(--brand),var(--brand-2));
+      box-shadow:0 6px 18px rgba(34,211,238,.35);
+    }
+    .nav a{
+      color:var(--white); text-decoration:none; margin-left:22px; font-weight:600; opacity:.85;
+    }
+    .nav a:hover{opacity:1}
+    .nav .cta{
+      background:linear-gradient(135deg,var(--brand),var(--brand-2));
+      color:#0a0f1a; padding:10px 14px; border-radius:10px; margin-left:18px; font-weight:800;
+      box-shadow:0 10px 22px rgba(34,211,238,.3);
+    }
+
+    /* HERO / BACKGROUND CANVAS MOUNT */
+    .hero{
+      position:relative; padding-top:96px; padding-bottom:48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    #vanta-bg{
+      position:fixed; inset:0; z-index:0;
+    }
+    .hero-inner{
+      position:relative; z-index:1; max-width:1120px; margin:0 auto; padding:24px;
+      text-align: center;
+    }
+    .headline{
+      font-size: clamp(28px, 4.5vw, 56px);
+      font-weight:900; line-height:1.05; letter-spacing:-.5px;
+      margin:18px 0 8px;
+      text-shadow:0 10px 30px rgba(0,0,0,.6);
+    }
+    .sub{
+      color:var(--muted); font-size: clamp(14px, 1.4vw, 18px);
+      max-width:850px; line-height:1.7;
+      margin: 0 auto;
+    }
+
+    /* CHAT PANEL - adjusted for landing page */
+    .chat-panel{
+      width: 600px;
+      max-width: 90vw;
+      background:var(--panel); border:1px solid rgba(255,255,255,.08);
+      border-radius:16px; box-shadow: var(--shadow); z-index:60; display:flex; flex-direction:column; overflow:hidden;
+      margin: 0 auto;
+    }
+    .chat-head{
+      display:flex; align-items:center; justify-content:space-between; padding:12px 14px;
+      background:linear-gradient(135deg, rgba(132,204,22,.25), rgba(34,211,238,.25));
+      border-bottom:1px solid rgba(255,255,255,.08);
+      font-weight:800;
+    }
+    .chat-body{
+      flex:1; overflow:auto; padding:14px; display:flex; flex-direction:column; gap:10px;
+      background:
+        radial-gradient(1200px 200px at 80% 100%, rgba(34,211,238,.06), transparent 60%),
+        radial-gradient(1000px 200px at 0% 0%, rgba(132,204,22,.06), transparent 60%);
+    }
+    .msg{
+      max-width:85%; padding:10px 12px; border-radius:12px; line-height:1.4; font-size:14px;
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .msg.me{align-self:flex-end; background:rgba(34,211,238,.12)}
+    .msg.ai{align-self:flex-start; background:rgba(132,204,22,.10)}
+    .chat-input{
+      display:flex; gap:10px; padding:10px; border-top:1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(4px);
+    }
+    .chat-input input{
+      flex:1; background:#0b1322; border:1px solid rgba(255,255,255,.08);
+      color:var(--white); padding:12px 14px; border-radius:12px; outline:none;
+    }
+    .send{
+      background:linear-gradient(135deg,var(--brand),var(--brand-2)); color:#0a0f1a; font-weight:800;
+      border:none; border-radius:12px; padding:0 14px; cursor:pointer;
+      box-shadow:0 10px 20px rgba(34,211,238,.25);
+    }
+
+    /* Remove floating chat button on landing page */
+    .chat-fab {
+      display: none;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 960px){
+      .chat-panel {
+        width: 90vw;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated background mount -->
+  <div id="vanta-bg"></div>
+
+  <!-- NAVBAR -->
+  <nav class="nav">
+    <div class="brand">
+      <div class="brand-badge"></div>
+      <div>PortInsights</div>
+    </div>
+    <div>
+      <a href="insights.html">Insights</a>
+      <a href="#" id="openHistory">Chat History</a>
+      <a href="#" class="cta" id="openChat">Chat</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="headline">Ask anything about port traffic — get answers and visuals.</div>
+      <div class="sub">
+        A Grok-style conversational analytics experience for maritime data.
+        Explore arrivals, congestion, and emissions through interactive insights,
+        or chat with the AI assistant for instant explanations.
+      </div>
+    </div>
+
+    <!-- CHAT PANEL always visible, centered -->
+    <div class="chat-panel" id="chat">
+      <div class="chat-head">
+        <div><i class="fa-solid fa-sparkles"></i> AI Assistant</div>
+      </div>
+      <div class="chat-body" id="chatBody">
+        <div class="msg ai">Hi! Ask me about arrivals, congestion, or emissions. I can also generate charts.</div>
+        <div class="msg me">What were the busiest ports last month?</div>
+        <div class="msg ai">Gothenburg, Klaipeda, and Gdansk. Want a bar chart?</div>
+      </div>
+      <div class="chat-input">
+        <input id="chatInput" placeholder="Type a question…" />
+        <button class="send" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CHAT HISTORY DRAWER -->
+  <aside class="drawer" id="drawer">
+    <h3><i class="fa-regular fa-clock"></i> Chat History</h3>
+    <div class="session">Busiest ports last month</div>
+    <div class="session">CO₂ if tankers slow 10%</div>
+    <div class="session">Avg waiting time in Klaipeda</div>
+    <div class="session">Arrivals this week vs last</div>
+  </aside>
+
+  <script>
+    // Animated background
+    let vantaEffect = VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.0,
+      scaleMobile: 1.0,
+      color: 0x22d3ee,
+      backgroundColor: 0x0a0f1a,
+      points: 8.0,
+      maxDistance: 18.0,
+      spacing: 16.0
+    });
+
+    // Chat UX
+    const input = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const bodyEl = document.getElementById('chatBody');
+
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMessage(); });
+
+    function sendMessage(){
+      const text = input.value.trim();
+      if(!text) return;
+      appendMsg(text,'me');
+      input.value='';
+      // demo AI response
+      setTimeout(()=> appendMsg("Got it. Generating an insight and chart…", 'ai'), 500);
+    }
+    function appendMsg(text, who){
+      const div = document.createElement('div');
+      div.className = `msg ${who}`;
+      div.textContent = text;
+      bodyEl.appendChild(div);
+      bodyEl.scrollTop = bodyEl.scrollHeight;
+    }
+
+    // Drawer (Chat History)
+    const drawer = document.getElementById('drawer');
+    document.getElementById('openHistory').addEventListener('click', (e)=>{
+      e.preventDefault();
+      drawer.classList.toggle('open');
+    });
+
+    // Cleanup on unload
+    window.addEventListener('beforeunload', ()=>{ if(vantaEffect && vantaEffect.destroy) vantaEffect.destroy(); });
+  </script>
+</body>
+</html>
