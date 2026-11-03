@@ -83,7 +83,7 @@ maritime_rag_pipeline/
 ├── data/
 │   └── final_data.csv         # your dataset
 │
-├── vector_db/                 # generated FAISS index & metadata
+├── vector_db_small/                 # generated FAISS index & metadata
 │
 ├── scripts/
 │   ├── chunk_data.py          # build FAISS vector DB
