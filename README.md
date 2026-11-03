@@ -74,6 +74,37 @@ Eagleeye/
         ├── vector_db/                 # FAISS vector database
         └── training_data/             # Generated training data
 ```
+---
+
+## Dataset
+
+The dataset (`final_data.csv`) contains maritime vessel port traffic records for Baltic Sea ports in 2021. Each row represents a vessel port call with the following key columns:
+
+| Column | Description |
+|---|---|
+| `portID` | Unique port identifier |
+| `portName` | Name of the port (e.g., VENTSPILS, KLAIPĖDA) |
+| `portLocode` | UN/LOCODE of the port |
+| `portArrival` | Timestamp of vessel arrival |
+| `portDeparture` | Timestamp of vessel departure |
+| `vesselMMSI` | Maritime Mobile Service Identity number |
+| `vesselIMO` | IMO vessel number |
+| `vesselName` | Name of the vessel |
+| `vesselType` | Type of vessel (e.g., TANKER, CARGO SHIP) |
+| `ais_VesselType` | AIS-reported vessel type |
+| `ais_Flag` | Flag state of the vessel |
+| `ais_Length` / `ais_Width` | Vessel dimensions |
+| `ais_Draught` | Vessel draught in meters |
+
+---
+
+
+
+
+
+
+
+
 
 ## 🚀 Quick Start
 
