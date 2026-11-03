@@ -71,36 +71,37 @@ The system retrieves the most relevant data chunks from a FAISS vector store and
 ## Project Structure
 
 ```
-Finetuning-LLM-EagleEYE-main/
+EagleEYE-AI/
 │
-├── final_merged_dataset_cleaned.csv       # Full raw/merged dataset
+├── README.md
 │
-└── maritime_rag_pipeline/
+└── EagleEYE-m/
+    ├── .gitignore
+    ├── README.md
+    ├── final_merged_dataset_cleaned.csv       # Full raw/merged dataset
     │
-    ├── data/
-    │   └── final_data.csv                 # Cleaned dataset used for indexing
-    │
-    ├── vector_db/                         # Full FAISS index (50k rows)
-    │   ├── index.faiss
-    │   └── index.pkl
-    │
-    ├── vector_db_small/                   # Smaller FAISS index for quick testing
-    │   ├── index.faiss
-    │   └── index.pkl
-    │
-    ├── scripts/
-    │   ├── chunk_data.py                  # Build FAISS vector database from CSV
-    │   ├── rag_qa.py                      # Run RAG question-answering
-    │   ├── generate_instructions.py       # Generate synthetic instruction-response pairs
-    │   ├── fine_tune_qlora.py             # QLoRA fine-tuning (GPU required)
-    │   ├── evaluate_retrieval.py          # Evaluate FAISS retrieval (Recall@K)
-    │   ├── evaluate_llm.py               # Evaluate fine-tuned LLM on eval set
-    │   └── test_rag.py                    # Quick smoke test for RAG pipeline
-    │
-    ├── training_data/
-    │   └── eval_questions.json            # Labeled evaluation questions
-    │
-    └── requirements.txt                   # Python dependencies
+    └── maritime_rag_pipeline/
+        ├── README.md
+        ├── requirements.txt                    # Python dependencies
+        │
+        ├── data/
+        │   └── final_data.csv                  # Cleaned dataset used for indexing
+        │
+        ├── scripts/
+        │   ├── chunk_data.py                   # Build FAISS vector database from CSV
+        │   ├── evaluate_llm.py                 # Evaluate fine-tuned LLM on eval set
+        │   ├── evaluate_retrieval.py           # Evaluate FAISS retrieval (Recall@K)
+        │   ├── fine_tune_qlora.py              # QLoRA fine-tuning (GPU required)
+        │   ├── generate_instructions.py         # Generate synthetic instruction-response pairs
+        │   ├── rag_qa.py                       # Run RAG question-answering
+        │   └── test_rag.py                     # Quick smoke test for RAG pipeline
+        │
+        ├── training_data/
+        │   └── eval_questions.json              # Labeled evaluation questions
+        │
+        └── vector_db_small/                     # Smaller FAISS index for quick testing
+            ├── index.faiss
+            └── index.pkl
 ```
 
 ---
